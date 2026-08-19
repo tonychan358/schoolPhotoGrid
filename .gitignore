@@ -1,0 +1,13 @@
+# 本工具純前端、無建置流程，倉庫只放 index.html 與 README。
+# 以下為避免誤上傳的保險：學生資料與相片絕對不應進入此倉庫。
+*.xlsx
+*.xls
+*.csv
+*.jpg
+*.jpeg
+*.png
+*.pdf
+photos/
+data/
+.DS_Store
+Thumbs.db
