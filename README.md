@@ -64,3 +64,9 @@
 
 - **需要網絡**：Tailwind CSS 與 SheetJS 由 CDN 載入，離線環境下介面與 Excel 解析會失效。若需完全離線，須把兩個 library 內嵌入檔案。
 - 缺相片的學生會顯示灰色人像佔位圖，格子底色標紅，並在頁面上方「缺失相片報告」列出。
+
+## 發佈
+
+公開版本：<https://github.com/tonychan358/schoolPhotoGrid>
+
+改完本專案後，執行 `publish-to-github.ps1` 即可同步（只發佈 `index.html`、`README.md`、`.gitignore`；`docs/` 為內部開發日誌，不公開）。
