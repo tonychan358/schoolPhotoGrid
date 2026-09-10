@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>學生外出午膳證自動化系統</title>
+    <title>學生相片電子格仔表自動化系統</title>
     <!-- Tailwind CSS for UI styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS for Excel parsing -->
@@ -26,30 +26,32 @@
             print-color-adjust: exact;
         }
 
-        /* 虛擬 A4 紙張的設定 (一頁 4 名學生，每張卡片約 64mm 高) */
+        /* 虛擬 A4 紙張的設定
+           ⚠️ 用 flex column：header 佔實際高度，grid 食晒剩餘空間，
+              保證內容永遠啱啱好 297mm，唔會爆出紙外被 overflow 剪走。 */
         .a4-page {
             width: var(--a4-width);
             height: var(--a4-height);
             background: white;
             margin: 20px auto;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            padding: 10mm 8mm; /* 紙張四邊留白 */
+            padding: 12mm 10mm; /* 設定紙張四邊留白 */
             box-sizing: border-box;
             position: relative;
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            page-break-after: always;
+            page-break-after: always; /* 列印時確保每張虛擬紙都是獨立一頁 */
             break-after: page;
         }
 
+        /* 最後一頁唔好再分頁，否則尾部會多出一張白紙 */
         .a4-page:last-child {
             page-break-after: auto;
             break-after: auto;
         }
 
-        /* 網頁頁首安全標章 */
+        /* ====== 網頁頁首安全標章（螢幕用；列印時隨控制面板一併隱藏）====== */
         .bento-security-badge {
             display: inline-flex;
             align-items: center;
@@ -62,6 +64,8 @@
             font-size: 12px;
             font-weight: 600;
             line-height: 1.35;
+            letter-spacing: 0.2px;
+            max-width: 460px;
         }
 
         .bento-security-badge svg {
@@ -70,212 +74,131 @@
             height: 18px;
         }
 
-        /* 外出午膳證外框 (單個學生區塊) */
-        .pass-card {
-            width: 100%;
-            height: 64mm; /* 一頁4個卡片 */
-            border: 1px solid #1e293b;
-            box-sizing: border-box;
-            display: flex;
-            position: relative;
-            background: #ffffff;
-            margin-bottom: 2mm;
-            page-break-inside: avoid;
-            overflow: hidden; /* 確保直角三角形不溢出 */
-        }
-
-        /* 緊貼左上角的直角三角形 (按級別分色) */
-        .grade-corner-triangle {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 14mm;
-            height: 14mm;
-            clip-path: polygon(0 0, 100% 0, 0 100%);
-            z-index: 10;
-        }
-
-        /* 正面 (左邊) 與 背面 (右邊) 對折分欄 */
-        .pass-side {
-            width: 50%;
-            height: 100%;
-            padding: 2.5mm 3mm;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-        }
-
-        /* 正面 (左邊) */
-        .pass-front {
-            border-right: 1px dashed #94a3b8; /* 對折虛線 */
-        }
-
-        /* 正面頁首 */
-        .front-header {
+        /* ====== 頁首（緊湊橫排）====== */
+        .page-header {
+            flex: 0 0 auto;
             display: flex;
             align-items: center;
-            gap: 2mm;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 1mm;
-            padding-left: 11mm; /* 避開左上角級別三角形，讓校徽向右移 */
+            gap: 3mm;
+            text-align: left;
+            color: #1e3a8a;
+            border-bottom: 2px solid #94a3b8;
+            padding-bottom: 3mm;
+            margin-bottom: 4mm;
         }
 
+        /* 校徽：靠左，唔會被壓縮 */
         .school-logo {
-            width: 13mm;
-            height: 13mm;
+            flex: 0 0 auto;
+            height: 15mm;
+            width: auto;
             object-fit: contain;
-            flex-shrink: 0;
         }
 
         .school-logo-placeholder {
-            width: 13mm;
-            height: 13mm;
+            flex: 0 0 auto;
+            height: 15mm;
+            width: 15mm;
             border: 1px dashed #cbd5e1;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 6pt;
+            font-size: 7pt;
             color: #94a3b8;
-            flex-shrink: 0;
+            border-radius: 4px;
         }
 
-        .front-title-container {
-            flex: 1;
+        /* 中間區：校名 + 學年，置中 */
+        .hdr-mid {
+            flex: 1 1 auto;
             text-align: center;
         }
 
-        .school-title-cn {
-            color: #dc2626; /* 紅色校名 */
-            font-size: 10.5pt;
+        .school-name {
+            font-size: 16pt;
             font-weight: bold;
-            line-height: 1.1;
+            letter-spacing: 0.5px;
+            line-height: 1.15;
         }
 
-        .school-title-en {
-            color: #dc2626;
-            font-size: 6.5pt;
+        .school-year {
+            font-size: 11pt;
             font-weight: 600;
-            line-height: 1.1;
-            transform: scale(0.95);
-        }
-
-        .pass-title-line {
-            color: #dc2626;
-            font-size: 9.5pt;
-            font-weight: bold;
-            margin-top: 0.5mm;
-            display: flex;
-            justify-content: center;
-            gap: 3mm;
-        }
-
-        .school-year-text {
-            color: #ea580c; /* 橙色學年 */
-            font-size: 10pt;
-            font-weight: bold;
-            text-align: center;
+            color: #475569;
+            letter-spacing: 1px;
             margin-top: 0.5mm;
         }
 
-        /* 正面主體：相片 + 學生資料 */
-        .front-body {
-            display: flex;
-            align-items: center;
-            gap: 3mm;
-            margin-top: 1.5mm;
-            flex: 1;
+        /* 右邊：班別標題 + 頁碼 */
+        .sheet-title {
+            flex: 0 0 auto;
+            font-size: 12pt;
+            font-weight: bold;
+            color: #1e3a8a;
+            text-align: right;
+            line-height: 1.3;
+            white-space: nowrap;
         }
 
-        .photo-box {
-            width: 22mm;
-            height: 28mm;
-            border: 1px solid #334155;
+        /* 格仔表網格：嚴格固定 4 欄 5 列，高度自動填滿剩餘空間 */
+        .student-grid {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-rows: repeat(5, minmax(0, 1fr));
+            gap: 4mm 4mm;
+        }
+
+        /* 學生卡片 (單一個格仔) */
+        .student-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 2mm;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end;
+            background-color: #ffffff;
+            min-height: 0;
             overflow: hidden;
-            flex-shrink: 0;
-            background: #f8fafc;
         }
 
-        .photo-box img {
+        .student-card.empty-slot {
+            border: 1px dashed #cbd5e1;
+            background-color: transparent;
+        }
+
+        /* 照片區域：高度彈性，食晒卡片內剩餘空間 */
+        .photo-area {
+            flex: 1 1 auto;
+            min-height: 0;
+            position: relative;
+            width: 100%;
+            margin-bottom: 1.5mm;
+            overflow: hidden;
+        }
+
+        .photo-area img {
+            position: absolute;
+            top: 0; left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
-        }
-
-        .student-info {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-around;
-            height: 100%;
-            min-width: 0;
-        }
-
-        .class-badge {
-            color: #059669; /* 綠色大字級別 S1-S6 */
-            font-size: 28pt;
-            font-weight: 900;
-            line-height: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            text-align: center;
-        }
-
-        .info-row {
-            font-size: 8.5pt;
-            line-height: 1.35;
-            color: #0f172a;
-            display: flex;
-            align-items: flex-start;
-        }
-
-        .info-label {
-            font-weight: 600;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-
-        .info-value {
-            font-weight: bold;
-            font-size: 9.5pt;
-            word-break: break-word;
-            overflow-wrap: anywhere;
-            padding-left: 2px;
-        }
-
-        /* 背面 (右邊) */
-        .pass-back {
-            background-color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .back-header {
-            color: #1d4ed8; /* 藍色地址與電話 */
-            font-size: 7pt;
-            line-height: 1.3;
-            border-bottom: 1px solid #1d4ed8;
-            padding-bottom: 1.5mm;
-        }
-
-        .disclaimer-box {
-            background-color: #f8fafc;
-            border: 1px solid #64748b;
-            padding: 2.5mm 3mm;
-            font-size: 7.5pt;
-            line-height: 1.35;
-            color: #0f172a;
+            object-fit: contain;
             border-radius: 4px;
-            margin-top: auto;
-            margin-bottom: auto;
         }
+
+        /* 文字資訊區域 */
+        .text-area {
+            flex: 0 0 auto;
+            text-align: center;
+            width: 100%;
+            line-height: 1.2;
+        }
+
+        .st-id { font-size: 11pt; font-weight: bold; color: #2563eb; }
+        .st-cn { font-size: 13pt; font-weight: bold; margin-top: 2px; }
+        .st-en { font-size: 9pt; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 
         /* ====== 列印專用設定 ====== */
         @media print {
@@ -285,9 +208,8 @@
                 size: A4 portrait;
                 margin: 0;
             }
-
             html, body {
-                background: white !important;
+                background: white;
                 margin: 0 !important;
                 padding: 0 !important;
             }
@@ -298,39 +220,35 @@
                 max-width: none !important;
                 width: auto !important;
             }
-
             #print-container {
                 margin: 0 !important;
                 padding: 0 !important;
             }
-
             .a4-page {
                 margin: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
-                width: 210mm !important;
-                height: 297mm !important;
+                box-shadow: none;
+                border: none;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- 控制面板 (列印時隱藏) -->
+    <!-- 頂部控制面板 (列印時會自動隱藏) -->
     <div class="no-print bg-white shadow-md p-6 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto">
             <h1 class="text-2xl font-bold text-gray-800 mb-4 flex items-center justify-between gap-4 flex-wrap">
                 <span class="flex items-center">
-                    <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5zM5 14a2 2 0 00-2 2v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 00-2-2H5z"></path></svg>
-                    學生外出午膳證自動化系統
+                    <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    學生相片電子格仔表系統
                 </span>
 
                 <div class="bento-security-badge">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                         <path d="m9 12 2 2 4-4"></path>
                     </svg>
-                    <span>符合資訊素養及網絡安全規範，處理過程純本地進行。</span>
+                    <span>符合資訊素養及網絡安全規範，處理過程純本地處理。</span>
                 </div>
             </h1>
             
@@ -346,7 +264,7 @@
                     <p class="text-xs text-blue-600 mt-2" id="excelStatus">請確保檔案包含 S1-S6 分頁，資料位於 D-G 欄。</p>
                 </div>
 
-                <!-- 步驟 2: 選擇相片資料夾 -->
+                <!-- 步骤 2: 選擇相片資料夾 -->
                 <div class="border rounded-lg p-4 bg-green-50">
                     <h3 class="font-bold text-green-800 mb-2">2. 載入相片主資料夾</h3>
                     <input type="file" id="photoInput" webkitdirectory directory multiple class="block w-full text-sm text-slate-500
@@ -363,122 +281,58 @@
                             <option value="0">原圖 — 不壓縮 (檔案極大)</option>
                         </select>
                     </div>
-                    <p class="text-xs text-green-600 mt-2" id="photoStatus">檔名必須為「班別-班號.jpg」(如 1A-01.jpg)。</p>
+                    <p class="text-xs text-green-600 mt-2" id="photoStatus">檔名格式為「班別班號.jpg」(如 1A01.jpg)。</p>
                 </div>
 
-                <!-- 步驟 3: 選擇模式與列印 -->
+                <!-- 步驟 3: 選擇班別與列印 (Multi-Select) -->
                 <div class="border rounded-lg p-4 bg-purple-50 flex flex-col justify-between">
                     <div>
                         <h3 class="font-bold text-purple-800 mb-2">3. 預覽與列印</h3>
-                        
                         <div class="flex items-center gap-2 mb-2">
                             <label for="schoolYear" class="text-xs font-semibold text-purple-800 whitespace-nowrap">學年</label>
-                            <input type="text" id="schoolYear" value="2024 - 2025" placeholder="2024 - 2025" maxlength="11"
+                            <input type="text" id="schoolYear" value="2024-2025" placeholder="xxxx-xxxx" maxlength="11"
                                 class="flex-1 p-1 text-sm text-center border border-gray-300 rounded-md bg-white font-semibold text-amber-700" />
                         </div>
 
-                        <!-- 模式選擇 (全班/全校 vs 自選學生) -->
-                        <div class="flex gap-2 mb-2">
-                            <label class="flex-1 text-xs text-center py-1 px-2 rounded cursor-pointer border bg-purple-600 text-white font-medium" id="modeBatchBtn">
-                                <input type="radio" name="printMode" value="batch" checked class="hidden" onchange="togglePrintMode('batch')">
-                                按班別 / 全校
-                            </label>
-                            <label class="flex-1 text-xs text-center py-1 px-2 rounded cursor-pointer border bg-white text-purple-800 font-medium" id="modeCustomBtn">
-                                <input type="radio" name="printMode" value="custom" class="hidden" onchange="togglePrintMode('custom')">
-                                自選學生 (補發/插班)
-                            </label>
-                        </div>
-
-                        <!-- 模式 A：下拉選單 -->
-                        <div id="batchSelectContainer">
-                            <select id="classSelect" disabled class="block w-full p-2 mb-2 border border-gray-300 rounded-md bg-white text-sm">
-                                <option value="">請先載入 Excel 名單</option>
-                            </select>
-                        </div>
-
-                        <!-- 模式 B：自選學生按鈕 -->
-                        <div id="customSelectContainer" class="hidden">
-                            <button id="openPickerBtn" disabled onclick="openStudentPickerModal()" class="w-full py-2 px-3 bg-white border border-purple-400 text-purple-700 font-semibold rounded text-sm hover:bg-purple-100 flex items-center justify-between">
-                                <span>選擇特定學生...</span>
-                                <span id="selectedCountBadge" class="bg-purple-600 text-white text-xs px-2 py-0.5 rounded-full">0 人</span>
+                        <!-- 班別多選控制容器 -->
+                        <div class="relative" id="multiSelectWrapper">
+                            <button id="classSelectBtn" type="button" disabled
+                                class="w-full flex items-center justify-between p-2 mb-2 border border-gray-300 rounded-md bg-white text-sm text-gray-700 disabled:bg-gray-100 disabled:text-gray-400 cursor-pointer shadow-sm hover:border-purple-400 transition"
+                                onclick="toggleClassDropdown()">
+                                <span id="classSelectBtnText" class="truncate font-medium">請先載入 Excel 名單</span>
+                                <svg class="w-4 h-4 ml-1 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
                             </button>
+
+                            <!-- 下拉多選浮層 -->
+                            <div id="classDropdownMenu" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-purple-200 rounded-lg shadow-2xl z-50 p-3 max-h-80 overflow-y-auto">
+                                <!-- 快捷全選/清空/級別按鈕 -->
+                                <div class="flex items-center justify-between gap-1 pb-2 border-b border-gray-200 mb-2">
+                                    <button type="button" onclick="selectAllClasses(true)" class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded shadow-sm">全選 (全校)</button>
+                                    <button type="button" onclick="selectAllClasses(false)" class="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded">清空</button>
+                                </div>
+                                <div id="gradeQuickButtons" class="flex flex-wrap gap-1 pb-2 border-b border-gray-100 mb-2">
+                                    <!-- 動態生成級別按鈕 S1-S6 -->
+                                </div>
+                                
+                                <!-- 班別 Checkbox 列表 -->
+                                <div id="classListOptions" class="grid grid-cols-2 gap-1.5 text-xs text-gray-700">
+                                    <!-- 動態填入班別 -->
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <button id="printBtn" disabled onclick="window.print()" class="w-full mt-2 bg-purple-600 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-purple-700 transition">
+                    <button id="printBtn" disabled onclick="window.print()" class="w-full bg-purple-600 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400 disabled:cursor-not-allowed hover:bg-purple-700 transition">
                         列印 / 匯出 PDF
                     </button>
-                </div>
-            </div>
-
-            <!-- 級別顏色對照圖例 -->
-            <div class="mt-4 pt-3 border-t border-gray-200 flex items-center gap-4 text-xs text-gray-600 flex-wrap">
-                <span class="font-bold text-gray-700">級別角標顏色對照：</span>
-                <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> S1 (紅)</span>
-                <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-orange-500 inline-block"></span> S2 (橙)</span>
-                <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-amber-400 inline-block"></span> S3 (黃)</span>
-                <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> S4 (綠)</span>
-                <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-blue-500 inline-block"></span> S5 (藍)</span>
-                <span class="inline-flex items-center gap-1"><span class="w-3 h-3 rounded-sm bg-purple-500 inline-block"></span> S6 (紫)</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 自選學生對話框 (Modal) -->
-    <div id="studentPickerModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
-            <!-- Modal Header -->
-            <div class="p-4 bg-purple-700 text-white flex justify-between items-center">
-                <h3 class="font-bold text-lg">自選特定學生 (跨班別 / 補發 / 插班)</h3>
-                <button onclick="closeStudentPickerModal()" class="text-white/80 hover:text-white text-xl font-bold px-2">&times;</button>
-            </div>
-
-            <!-- Search & Filter Bar -->
-            <div class="p-4 bg-gray-50 border-b flex gap-3 flex-wrap items-center">
-                <div class="flex-1 min-w-[200px]">
-                    <input type="text" id="modalSearchInput" oninput="filterModalStudentList()" placeholder="搜尋姓名、學號、班別 (如 1A 或 陳大文)..." 
-                           class="w-full p-2 border rounded-lg text-sm">
-                </div>
-                <select id="modalClassFilter" onchange="filterModalStudentList()" class="p-2 border rounded-lg text-sm bg-white">
-                    <option value="">所有班別</option>
-                </select>
-                <div class="flex gap-2">
-                    <button onclick="selectAllFilteredStudents(true)" class="px-3 py-1.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded hover:bg-purple-200">全選目前篩選</button>
-                    <button onclick="selectAllFilteredStudents(false)" class="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded hover:bg-gray-300">清空選擇</button>
-                </div>
-            </div>
-
-            <!-- Student List Table -->
-            <div class="flex-1 overflow-y-auto p-4">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-gray-100 text-gray-600 sticky top-0">
-                        <tr>
-                            <th class="p-2 w-10 text-center"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAllModal(this.checked)"></th>
-                            <th class="p-2">學號</th>
-                            <th class="p-2">中文姓名</th>
-                            <th class="p-2">English Name</th>
-                            <th class="p-2 text-center">相片狀態</th>
-                        </tr>
-                    </thead>
-                    <tbody id="modalStudentTableBody" class="divide-y">
-                        <!-- 動態渲染學生列表 -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Modal Footer -->
-            <div class="p-4 border-t bg-gray-50 flex justify-between items-center">
-                <span class="text-sm font-medium text-gray-700">已選擇 <strong id="modalSelectedCount" class="text-purple-700">0</strong> 位學生</span>
-                <div class="flex gap-2">
-                    <button onclick="closeStudentPickerModal()" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300">取消</button>
-                    <button onclick="applyCustomStudentSelection()" class="px-5 py-2 bg-purple-600 text-white rounded-lg text-sm font-bold hover:bg-purple-700">確認並套用預覽</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- 預覽區域與報告面板 -->
-    <div id="preview-wrap" class="max-w-6xl mx-auto mt-6 px-4">
+    <div id="preview-wrap" class="max-w-6xl mx-auto mt-6">
 
         <!-- 缺失相片報告面板 (列印時隱藏) -->
         <div id="missingReportPanel" class="no-print hidden mb-6 bg-red-50 border border-red-200 rounded-lg p-4 shadow-sm">
@@ -489,58 +343,48 @@
             <p class="text-sm text-red-600 mb-3" id="missingReportSummary"></p>
             <div class="max-h-40 overflow-y-auto bg-white rounded border border-red-100 p-2">
                 <ul id="missingReportList" class="list-disc pl-5 text-sm text-gray-700 space-y-1">
-                    <!-- 缺失名單動態生成 -->
+                    <!-- 缺失名單將在此生成 -->
                 </ul>
             </div>
         </div>
 
-        <!-- 實體 A4 畫布區 -->
+        <!-- 實體 A4 畫布將渲染於此 -->
         <div id="print-container" class="pb-20">
+            <!-- 初始提示狀態 -->
             <div id="empty-state" class="no-print flex flex-col items-center justify-center pt-20 text-gray-400">
                 <svg class="w-20 h-20 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                <p class="text-lg">載入資料後，實體 A4 外出午膳證預覽將在此顯示</p>
+                <p class="text-lg">載入資料後，實體 A4 排版預覽將在此顯示</p>
             </div>
         </div>
     </div>
 
     <script>
-        // 缺照片的預設佔位 SVG
+        // 缺少照片的 SVG Placeholder (轉為 Data URI 使用)
         const noPhotoSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="120" viewBox="0 0 100 120"><rect width="100" height="120" fill="%23f1f5f9" rx="4"/><path fill="%2394a3b8" d="M50 35a15 15 0 100 30 15 15 0 000-30zm0 35c-13.3 0-40 6.7-40 20v10h80V90c0-13.3-26.7-20-40-20z"/></svg>`;
-
-        // 校名與校徽（校徽已轉 base64 內嵌，唔使外部檔案）
+  
+        // 校名與校徽 (留空自補)
+        const SCHOOL_NAME = '香港道教聯合會圓玄學院第三中學';
         const SCHOOL_LOGO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAMAAABrrFhUAAABgFBMVEWYqJ0tKR5hYWFnVAnm02XR0dH4qyb/ygzTqArqyjm8eQDtHSGOcwrvPUGsiwv72ZNHOgajxXLxXmHzfoCxsQDptkX2nqB/fwDtZQh+u35wwqGRx5X5v8AfgZ/1sCCpmmgUUF8AAAAyxvT+/v0AAAH8tBX9rQg30/4cx/7//wD9qQVSwtUwuubwtCytt20rp87+uwYWV2z/fwAJJzDOtE9yva7+xE0RRlYIFBn66OgiiKj8xwaQu4/72NgNOUfyZ2hjwcgddZH0h4j3p6jwV1iLt3H7sBYustsmlbj7sRf1lpf5x8jzdnf4t7j6rRX7sRbvR0kZY3oaa4T7sRbrBAb9shT/AADuNjjtKCr86s36rhQGGyL91478sRX6rhVvwrPsFhhFxOLasjn+1AP+mQP7rhX85LIgfZr9zGnmrSUoncL91XN6u5cLMTy4slj6rhbFtmXyySn5rhcTTmDZrTP88djOmQOwxm783aQggJ7Px1M74v9ovsKQxY9mZmbQrkYj/W/WAAAAgHRSTlP///////8GBv//A////////////wP+/wIE/v////9v//8A/v///P3//wEG/v/+/v8I/wL//v7////////+/////v/////+cf//zv////8urv///5D/LwH///9M//9QcP///v7/BY3////+///+//+u/f/P////Bf///////////68OUecAADljSURBVHja7X2JXxvHsq7sxHYSx8nJyUnOcu997yFGGu07aAHtAgktIIFAGAwIDMZgwDZeEi9J/vVXVd090zMaLSDhm3Ov55cYjAGpvq69qqtsU//LH9tnAD4D8BmAzwB8BuAzAJ8B+AzAJ3w23O6IxxMKHR6GvvF4vsGPIY8n4nZv/I8HAEgPHbr7/7v7MPSpYfh0ALgjIQ//9J5neXlrcXdx7ehoDf+HT7eWlz33+D97QhH3/zAAgPgIfox4lncXj5YcfZ6lo8XdZQ/7zk8FwicAwO2hk/es767ppDvhf7/f/1MsBn/6+Rc4DGu76+wnPO5/fwDcRMTb9d0VQaE/9iIwP5Pzevft2rPv9eZm5gMvYn6Bwsru+lvtx/9tAdhw40mGdtjJO53+FwszXiTY5bL3POxr3pmFF36nk3HCTgj54Ga14g0C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';
 
-        const SCHOOL_NAME_CN = "香港道教聯合會圓玄學院第三中學";
-        const SCHOOL_NAME_EN = "HKTA The Yuen Yuen Institute No.3 Secondary School";
 
-        // 全域變數
+        // 系統全域變數
         let allStudents = [];
         let classesList = [];
-        let rawFilesMap = {};   
-        let imageFilesMap = {}; 
-        let selectedStudentIds = new Set(); // 存放自選模式下已勾選的學生 ID
-        let currentPrintMode = 'batch';     // 'batch' 或 'custom'
-        const JPEG_QUALITY = 0.82; 
-        const STUDENTS_PER_PAGE = 4; // 一頁 4 個外出午膳證
-
-        // 級別對應顏色配置 (1A-1D -> S1 亮紅, 2A-2D -> S2 橙色, 3A-3D -> S3 黃色, 4A-4D -> S4 翠綠, 5A-5D -> S5 湛藍, 6A-6D -> S6 紫色)
-        function getGradeCornerColor(cls) {
-            const firstChar = String(cls).charAt(0).toUpperCase();
-            switch (firstChar) {
-                case '1': return '#ef4444'; // S1 - 紅色
-                case '2': return '#f97316'; // S2 - 橙色
-                case '3': return '#f59e0b'; // S3 - 黃色
-                case '4': return '#10b981'; // S4 - 綠色
-                case '5': return '#3b82f6'; // S5 - 藍色
-                case '6': return '#a855f7'; // S6 - 紫色
-                default:  return '#6b7280'; // 預設灰色
-            }
-        }
+        let selectedClasses = new Set(); // 存放已選取的班別
+        let rawFilesMap = {};   // 原始相片檔 (Key: 1A01, Value: File Object)
+        let imageFilesMap = {}; // 已縮圖的相片 (Key: 1A01, Value: JPEG data URL)
+        const JPEG_QUALITY = 0.82; // 縮圖後的 JPEG 品質
+        const STUDENTS_PER_PAGE = 20; // A4排版：4x5
 
         // DOM 元素
         const excelInput = document.getElementById('excelInput');
         const photoInput = document.getElementById('photoInput');
-        const classSelect = document.getElementById('classSelect');
+        const classSelectBtn = document.getElementById('classSelectBtn');
+        const classSelectBtnText = document.getElementById('classSelectBtnText');
+        const classDropdownMenu = document.getElementById('classDropdownMenu');
+        const classListOptions = document.getElementById('classListOptions');
+        const gradeQuickButtons = document.getElementById('gradeQuickButtons');
+        const multiSelectWrapper = document.getElementById('multiSelectWrapper');
         const printBtn = document.getElementById('printBtn');
         const printContainer = document.getElementById('print-container');
         const emptyState = document.getElementById('empty-state');
@@ -552,49 +396,16 @@
         const missingReportSummary = document.getElementById('missingReportSummary');
         const missingReportList = document.getElementById('missingReportList');
 
-        // Modal 相關 DOM
-        const openPickerBtn = document.getElementById('openPickerBtn');
-        const studentPickerModal = document.getElementById('studentPickerModal');
-        const modalSearchInput = document.getElementById('modalSearchInput');
-        const modalClassFilter = document.getElementById('modalClassFilter');
-        const modalStudentTableBody = document.getElementById('modalStudentTableBody');
-        const modalSelectedCount = document.getElementById('modalSelectedCount');
-        const selectedCountBadge = document.getElementById('selectedCountBadge');
-
-        // Helper: 取得學年
-        function getSchoolYear() {
-            return (schoolYear.value || '').trim();
-        }
-
-        // 綁定學年變更事件
-        schoolYear.addEventListener('input', function() {
-            const v = getSchoolYear();
-            document.querySelectorAll('.school-year-display').forEach(el => { el.innerText = v; });
+        // 點擊外部自動關閉下拉清單
+        document.addEventListener('click', function(e) {
+            if (!multiSelectWrapper.contains(e.target)) {
+                classDropdownMenu.classList.add('hidden');
+            }
         });
 
-        // 模式切換邏輯
-        function togglePrintMode(mode) {
-            currentPrintMode = mode;
-            const batchBtn = document.getElementById('modeBatchBtn');
-            const customBtn = document.getElementById('modeCustomBtn');
-            const batchContainer = document.getElementById('batchSelectContainer');
-            const customContainer = document.getElementById('customSelectContainer');
-
-            if (mode === 'batch') {
-                batchBtn.className = "flex-1 text-xs text-center py-1 px-2 rounded cursor-pointer border bg-purple-600 text-white font-medium";
-                customBtn.className = "flex-1 text-xs text-center py-1 px-2 rounded cursor-pointer border bg-white text-purple-800 font-medium";
-                batchContainer.classList.remove('hidden');
-                customContainer.classList.add('hidden');
-                if (classSelect.value) {
-                    handleSelection(classSelect.value);
-                }
-            } else {
-                customBtn.className = "flex-1 text-xs text-center py-1 px-2 rounded cursor-pointer border bg-purple-600 text-white font-medium";
-                batchBtn.className = "flex-1 text-xs text-center py-1 px-2 rounded cursor-pointer border bg-white text-purple-800 font-medium";
-                customContainer.classList.remove('hidden');
-                batchContainer.classList.add('hidden');
-                renderCustomSelectedStudents();
-            }
+        function toggleClassDropdown() {
+            if (classSelectBtn.disabled) return;
+            classDropdownMenu.classList.toggle('hidden');
         }
 
         // 1. 處理 Excel 上傳
@@ -616,29 +427,24 @@
                             const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header: "A", defval: ""});
                             
                             json.forEach((row, index) => {
-                                const colD = String(row['D'] || '').trim();
-                                if (index === 0 && (colD === '班別' || colD === 'Class' || colD === '')) return;
+                                if (index === 0 && (row['D'] === '班別' || row['D'] === 'Class')) return;
 
-                                let cls = colD;
-                                let num = String(row['E'] || '').trim();
-                                let enName = String(row['F'] || '').trim();
-                                let cnName = String(row['G'] || '').trim();
+                                let cls = String(row['D']).trim();
+                                let num = String(row['E']).trim();
+                                let enName = String(row['F']).trim();
+                                let cnName = String(row['G']).trim();
 
                                 if (cls && num && !isNaN(parseInt(num, 10))) {
                                     let numPadded = parseInt(num, 10).toString().padStart(2, '0');
-                                    let studentId = `${cls.toUpperCase()}-${numPadded}`;
+                                    // 核心更改：命名規範直接為 1A01 格式
+                                    let studentId = `${cls.toUpperCase()}${numPadded}`;
                                     
-                                    // 判斷 Form (S1-S6)
-                                    let formStr = `S${cls.charAt(0)}`;
-
                                     allStudents.push({
                                         class: cls.toUpperCase(),
                                         num: parseInt(num, 10),
-                                        classNoFormatted: numPadded,
                                         id: studentId,
                                         en: enName,
-                                        cn: cnName,
-                                        formStr: formStr
+                                        cn: cnName
                                     });
                                 }
                             });
@@ -652,37 +458,16 @@
 
                     classesList = [...new Set(allStudents.map(s => s.class))].sort();
                     
-                    // 更新模式 A 的下拉選單
-                    classSelect.innerHTML = '<option value="">-- 請選擇要預覽的班別 --</option>';
-                    
-                    let allOption = document.createElement('option');
-                    allOption.value = "ALL";
-                    allOption.innerText = `🌟 全校 (共 ${classesList.length} 班, ${allStudents.length} 人)`;
-                    classSelect.appendChild(allOption);
+                    // 預設全選所有班別
+                    selectedClasses = new Set(classesList);
+                    buildMultiSelectMenu();
+                    updateSelectButtonLabel();
 
-                    classesList.forEach(cls => {
-                        let option = document.createElement('option');
-                        option.value = cls;
-                        let count = allStudents.filter(s => s.class === cls).length;
-                        option.innerText = `${cls} 班 (${count} 人)`;
-                        classSelect.appendChild(option);
-                    });
-
-                    // 更新 Modal 的班別篩選
-                    modalClassFilter.innerHTML = '<option value="">所有班別</option>';
-                    classesList.forEach(cls => {
-                        let opt = document.createElement('option');
-                        opt.value = cls;
-                        opt.innerText = `${cls} 班`;
-                        modalClassFilter.appendChild(opt);
-                    });
-
-                    classSelect.disabled = false;
-                    openPickerBtn.disabled = false;
-                    excelStatus.innerHTML = `✅ 成功讀取 ${allStudents.length} 位學生資料。`;
+                    classSelectBtn.disabled = false;
+                    excelStatus.innerHTML = `✅ 成功讀取 ${allStudents.length} 位學生資料 (${classesList.length} 個班別)。`;
                     excelStatus.className = "text-xs text-green-600 mt-2 font-bold";
                     
-                    checkReadyState();
+                    renderSelectedClasses();
 
                 } catch (error) {
                     console.error(error);
@@ -692,7 +477,98 @@
             reader.readAsArrayBuffer(file);
         });
 
-        // 2. 相片縮圖處理
+        // 構建多選下拉面板的內容
+        function buildMultiSelectMenu() {
+            // 構建級別快捷鍵 (S1-S6)
+            const availableGrades = [...new Set(classesList.map(c => c.charAt(0)))].sort();
+            gradeQuickButtons.innerHTML = '';
+            availableGrades.forEach(g => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'px-2 py-0.5 bg-slate-100 hover:bg-purple-100 text-purple-700 font-semibold rounded text-xs border border-slate-200';
+                btn.innerText = `S${g} 級`;
+                btn.onclick = () => toggleGradeClasses(g);
+                gradeQuickButtons.appendChild(btn);
+            });
+
+            // 構建班別 Checkbox 列表
+            classListOptions.innerHTML = '';
+            classesList.forEach(cls => {
+                const count = allStudents.filter(s => s.class === cls).length;
+                const isChecked = selectedClasses.has(cls);
+
+                const label = document.createElement('label');
+                label.className = 'flex items-center gap-1.5 p-1.5 rounded hover:bg-purple-50 cursor-pointer select-none';
+                label.innerHTML = `
+                    <input type="checkbox" value="${cls}" ${isChecked ? 'checked' : ''} 
+                           class="rounded text-purple-600 focus:ring-purple-500 class-chk"
+                           onchange="onClassCheckboxChange('${cls}', this.checked)">
+                    <span class="font-medium text-gray-800">${cls}</span>
+                    <span class="text-gray-400 text-[10px]">(${count}人)</span>
+                `;
+                classListOptions.appendChild(label);
+            });
+        }
+
+        function onClassCheckboxChange(cls, isChecked) {
+            if (isChecked) {
+                selectedClasses.add(cls);
+            } else {
+                selectedClasses.delete(cls);
+            }
+            updateSelectButtonLabel();
+            renderSelectedClasses();
+        }
+
+        function selectAllClasses(select) {
+            if (select) {
+                selectedClasses = new Set(classesList);
+            } else {
+                selectedClasses.clear();
+            }
+            // 更新 checkbox
+            document.querySelectorAll('.class-chk').forEach(chk => {
+                chk.checked = select;
+            });
+            updateSelectButtonLabel();
+            renderSelectedClasses();
+        }
+
+        // 依級別快速全選/取消
+        function toggleGradeClasses(gradeChar) {
+            const gradeClasses = classesList.filter(c => c.startsWith(gradeChar));
+            const allSelected = gradeClasses.every(c => selectedClasses.has(c));
+
+            gradeClasses.forEach(c => {
+                if (allSelected) {
+                    selectedClasses.delete(c);
+                } else {
+                    selectedClasses.add(c);
+                }
+            });
+
+            document.querySelectorAll('.class-chk').forEach(chk => {
+                chk.checked = selectedClasses.has(chk.value);
+            });
+
+            updateSelectButtonLabel();
+            renderSelectedClasses();
+        }
+
+        function updateSelectButtonLabel() {
+            if (selectedClasses.size === 0) {
+                classSelectBtnText.innerText = '⚠️ 請勾選要列印的班別 (0 班)';
+            } else if (selectedClasses.size === classesList.length) {
+                classSelectBtnText.innerText = `🌟 全校 (共 ${classesList.length} 班, ${allStudents.length} 人)`;
+            } else {
+                const totalStudentsInSelection = allStudents.filter(s => selectedClasses.has(s.class)).length;
+                const sampleClasses = Array.from(selectedClasses).slice(0, 3).join(', ');
+                const extra = selectedClasses.size > 3 ? '...' : '';
+                classSelectBtnText.innerText = `已選 ${selectedClasses.size} 班 (${totalStudentsInSelection}人): ${sampleClasses}${extra}`;
+            }
+        }
+
+        // 2. 相片縮圖與辨認處理 (相容 1A01 與 1A-01)
         async function shrinkPhoto(file, maxPx) {
             let bmp;
             try {
@@ -725,7 +601,7 @@
 
             if (!maxPx) {
                 ids.forEach(id => { imageFilesMap[id] = URL.createObjectURL(rawFilesMap[id]); });
-                photoStatus.innerHTML = `✅ 已載入 ${ids.length} 張相片（原圖）。`;
+                photoStatus.innerHTML = `✅ 已載入 ${ids.length} 張相片（原圖，未壓縮）。`;
                 photoStatus.className = "text-xs text-amber-600 mt-2 font-bold";
                 return;
             }
@@ -745,6 +621,7 @@
                     imageFilesMap[ids[i]] = dataUrl;
                     bytes += dataUrl.length * 0.75;
                 } catch (err) {
+                    console.error('壓縮失敗，改用原圖：' + ids[i], err);
                     imageFilesMap[ids[i]] = URL.createObjectURL(rawFilesMap[ids[i]]);
                 }
             }
@@ -754,7 +631,7 @@
 
             const avgKb = Math.round(bytes / ids.length / 1024);
             const totalMb = (bytes / 1048576).toFixed(1);
-            photoStatus.innerHTML = `✅ 成功載入 ${ids.length} 張相片（已縮至 ${maxPx}px，合共約 ${totalMb}MB）。`;
+            photoStatus.innerHTML = `✅ 成功載入 ${ids.length} 張相片（已縮至 ${maxPx}px，平均 ${avgKb}KB，合共約 ${totalMb}MB）。`;
             photoStatus.className = "text-xs text-green-600 mt-2 font-bold";
         }
 
@@ -767,333 +644,169 @@
             for (let i = 0; i < files.length; i++) {
                 let file = files[i];
                 if (file.type.startsWith('image/')) {
-                    let nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')).toUpperCase();
-                    rawFilesMap[nameWithoutExt] = file;
+                    // 自動轉大寫並去除破折號與空格，標準化為 1A01 格式
+                    let nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')).toUpperCase().trim();
+                    let normalizedKey = nameWithoutExt.replace(/[-\s_]/g, '');
+                    rawFilesMap[normalizedKey] = file;
                 }
             }
 
             await processAllPhotos();
-            checkReadyState();
-
-            if (currentPrintMode === 'batch' && classSelect.value) {
-                handleSelection(classSelect.value);
-            } else if (currentPrintMode === 'custom') {
-                renderCustomSelectedStudents();
-            }
+            renderSelectedClasses();
         });
 
         photoQuality.addEventListener('change', async function() {
             if (Object.keys(rawFilesMap).length === 0) return;
             await processAllPhotos();
-            if (currentPrintMode === 'batch' && classSelect.value) {
-                handleSelection(classSelect.value);
-            } else if (currentPrintMode === 'custom') {
-                renderCustomSelectedStudents();
-            }
+            renderSelectedClasses();
         });
 
-        function checkReadyState() {
-            if (allStudents.length > 0) {
-                classSelect.disabled = false;
-                openPickerBtn.disabled = false;
-            }
+        function getSchoolYear() {
+            return (schoolYear.value || '').trim();
         }
 
-        // --- Modal 自選學生對話框相關邏輯 ---
-        function openStudentPickerModal() {
-            studentPickerModal.classList.remove('hidden');
-            filterModalStudentList();
-        }
+        schoolYear.addEventListener('input', function() {
+            const v = getSchoolYear();
+            document.querySelectorAll('.school-year').forEach(el => { el.innerText = v; });
+        });
 
-        function closeStudentPickerModal() {
-            studentPickerModal.classList.add('hidden');
-        }
-
-        function filterModalStudentList() {
-            const searchText = modalSearchInput.value.trim().toLowerCase();
-            const classFilter = modalClassFilter.value;
-
-            const filtered = allStudents.filter(s => {
-                const matchClass = !classFilter || s.class === classFilter;
-                const matchSearch = !searchText || 
-                    s.id.toLowerCase().includes(searchText) ||
-                    s.cn.toLowerCase().includes(searchText) ||
-                    s.en.toLowerCase().includes(searchText) ||
-                    s.class.toLowerCase().includes(searchText);
-                return matchClass && matchSearch;
-            });
-
-            renderModalTable(filtered);
-        }
-
-        function renderModalTable(students) {
-            modalStudentTableBody.innerHTML = '';
-
-            students.forEach(s => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50 transition cursor-pointer";
-                tr.onclick = (e) => {
-                    if (e.target.tagName !== 'INPUT') {
-                        const chk = tr.querySelector('input[type="checkbox"]');
-                        chk.checked = !chk.checked;
-                        toggleStudentSelection(s.id, chk.checked);
-                    }
-                };
-
-                const isChecked = selectedStudentIds.has(s.id);
-                const hasPhoto = !!imageFilesMap[s.id];
-
-                tr.innerHTML = `
-                    <td class="p-2 text-center">
-                        <input type="checkbox" value="${s.id}" ${isChecked ? 'checked' : ''} 
-                               onchange="toggleStudentSelection('${s.id}', this.checked)" class="rounded text-purple-600 focus:ring-purple-500">
-                    </td>
-                    <td class="p-2 font-bold text-blue-600">${s.id}</td>
-                    <td class="p-2 font-medium text-gray-800">${s.cn || '-'}</td>
-                    <td class="p-2 text-gray-500 text-xs">${s.en || '-'}</td>
-                    <td class="p-2 text-center">
-                        ${hasPhoto ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">✅ 有相片</span>' : '<span class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">⚠️ 缺相片</span>'}
-                    </td>
-                `;
-                modalStudentTableBody.appendChild(tr);
-            });
-
-            updateModalCount();
-        }
-
-        function toggleStudentSelection(studentId, isChecked) {
-            if (isChecked) {
-                selectedStudentIds.add(studentId);
-            } else {
-                selectedStudentIds.delete(studentId);
-            }
-            updateModalCount();
-        }
-
-        function selectAllFilteredStudents(select) {
-            const checkboxes = modalStudentTableBody.querySelectorAll('input[type="checkbox"]');
-            checkboxes.forEach(chk => {
-                chk.checked = select;
-                if (select) {
-                    selectedStudentIds.add(chk.value);
-                } else {
-                    selectedStudentIds.delete(chk.value);
-                }
-            });
-            updateModalCount();
-        }
-
-        function toggleSelectAllModal(checked) {
-            selectAllFilteredStudents(checked);
-        }
-
-        function updateModalCount() {
-            const count = selectedStudentIds.size;
-            modalSelectedCount.innerText = count;
-            selectedCountBadge.innerText = `${count} 人`;
-        }
-
-        function applyCustomStudentSelection() {
-            closeStudentPickerModal();
-            renderCustomSelectedStudents();
-        }
-
-        // 渲染自選學生畫布
-        function renderCustomSelectedStudents() {
+        // 3. 渲染選定的多個班別
+        function renderSelectedClasses() {
             printContainer.innerHTML = '';
             missingReportPanel.classList.add('hidden');
 
-            if (selectedStudentIds.size === 0) {
+            if (selectedClasses.size === 0) {
                 printContainer.appendChild(emptyState);
                 printBtn.disabled = true;
                 return;
             }
 
-            const selectedList = allStudents.filter(s => selectedStudentIds.has(s.id));
-            selectedList.sort((a, b) => {
-                if (a.class === b.class) return a.num - b.num;
-                return a.class.localeCompare(b.class);
+            // 按標準班別順序渲染所勾選的班級
+            const classesToRender = classesList.filter(c => selectedClasses.has(c));
+            let totalStudentsSelected = [];
+
+            classesToRender.forEach(cls => {
+                let classStudents = allStudents.filter(s => s.class === cls);
+                classStudents.sort((a, b) => a.num - b.num);
+                totalStudentsSelected.push(...classStudents);
+                renderPagesForClass(cls, classStudents);
             });
 
-            renderPagesForStudentList("補發 / 插班自選學生", selectedList);
-            generateMissingReport(selectedList, "自選學生");
+            const scopeTitle = selectedClasses.size === classesList.length 
+                ? "全校" 
+                : `所選 ${selectedClasses.size} 班`;
+            generateMissingReport(totalStudentsSelected, scopeTitle);
             printBtn.disabled = false;
         }
 
-        // 3. 監聽下拉選單 (模式 A)
-        classSelect.addEventListener('change', function(e) {
-            handleSelection(e.target.value);
-        });
-
-        function handleSelection(selection) {
-            printContainer.innerHTML = '';
-            missingReportPanel.classList.add('hidden');
-
-            if (!selection) {
-                printContainer.appendChild(emptyState);
-                printBtn.disabled = true;
-                return;
-            }
-
-            let studentsToRender = [];
-            
-            if (selection === "ALL") {
-                studentsToRender = [...allStudents].sort((a, b) => {
-                    if (a.class === b.class) return a.num - b.num;
-                    return a.class.localeCompare(b.class);
-                });
-                
-                classesList.forEach(cls => {
-                    let classStudents = studentsToRender.filter(s => s.class === cls);
-                    renderPagesForClass(cls, classStudents);
-                });
-            } else {
-                studentsToRender = allStudents.filter(s => s.class === selection);
-                studentsToRender.sort((a, b) => a.num - b.num);
-                renderPagesForClass(selection, studentsToRender);
-            }
-
-            generateMissingReport(studentsToRender, selection === "ALL" ? "全校" : `${selection}班`);
-            printBtn.disabled = false;
-        }
-
-        // 4. 渲染外出午膳證 (1頁 4 位學生，逐班分頁)
+        // 渲染單一班別的 A4 頁面 (一頁 20 人)
         function renderPagesForClass(cls, classStudents) {
-            renderPagesForStudentList(cls, classStudents);
-        }
+            if (classStudents.length === 0) return;
 
-        // 核心渲染數組列表
-        function renderPagesForStudentList(titleLabel, studentList) {
-            if (studentList.length === 0) return;
-
-            const totalPages = Math.ceil(studentList.length / STUDENTS_PER_PAGE);
+            const totalPages = Math.ceil(classStudents.length / STUDENTS_PER_PAGE);
 
             for (let i = 0; i < totalPages; i++) {
-                let pageStudents = studentList.slice(i * STUDENTS_PER_PAGE, (i + 1) * STUDENTS_PER_PAGE);
+                let pageStudents = classStudents.slice(i * STUDENTS_PER_PAGE, (i + 1) * STUDENTS_PER_PAGE);
 
                 let pageDiv = document.createElement('div');
                 pageDiv.className = 'a4-page';
 
+                // 頁首
+                let header = document.createElement('div');
+                header.className = 'page-header';
+
+                if (SCHOOL_LOGO) {
+                    let logo = document.createElement('img');
+                    logo.className = 'school-logo';
+                    logo.src = SCHOOL_LOGO;
+                    logo.alt = '校徽';
+                    header.appendChild(logo);
+                } else {
+                    let logoBox = document.createElement('div');
+                    logoBox.className = 'school-logo-placeholder';
+                    logoBox.innerText = '校徽位置';
+                    header.appendChild(logoBox);
+                }
+
+                let mid = document.createElement('div');
+                mid.className = 'hdr-mid';
+
+                let nameEl = document.createElement('div');
+                nameEl.className = 'school-name';
+                nameEl.innerText = SCHOOL_NAME;
+                mid.appendChild(nameEl);
+
+                let yearEl = document.createElement('div');
+                yearEl.className = 'school-year';
+                yearEl.innerText = getSchoolYear();
+                mid.appendChild(yearEl);
+
+                header.appendChild(mid);
+
+                let titleEl = document.createElement('div');
+                titleEl.className = 'sheet-title';
+
+                let titleLine = document.createElement('div');
+                titleLine.innerText = `${cls} 班學生相片表`;
+                titleEl.appendChild(titleLine);
+
+                if (totalPages > 1) {
+                    let pageLine = document.createElement('div');
+                    pageLine.innerText = `(P.${i + 1} / ${totalPages})`;
+                    titleEl.appendChild(pageLine);
+                }
+
+                header.appendChild(titleEl);
+                pageDiv.appendChild(header);
+
+                // 4x5 學生網格
+                let grid = document.createElement('div');
+                grid.className = 'student-grid';
+
                 pageStudents.forEach(student => {
-                    let passCard = document.createElement('div');
-                    passCard.className = 'pass-card';
+                    let card = document.createElement('div');
+                    card.className = 'student-card';
 
-                    // 緊貼左上角的直角三角形 (按級別分色)
-                    let triangle = document.createElement('div');
-                    triangle.className = 'grade-corner-triangle';
-                    triangle.style.backgroundColor = getGradeCornerColor(student.class);
-                    passCard.appendChild(triangle);
-
-                    // --- 正面 (左半部) ---
-                    let frontSide = document.createElement('div');
-                    frontSide.className = 'pass-side pass-front';
-
-                    // 1. 正面 Header
-                    let frontHeader = document.createElement('div');
-                    frontHeader.className = 'front-header';
-
-                    if (SCHOOL_LOGO) {
-                        let logoImg = document.createElement('img');
-                        logoImg.className = 'school-logo';
-                        logoImg.src = SCHOOL_LOGO;
-                        logoImg.alt = '校徽';
-                        frontHeader.appendChild(logoImg);
-                    } else {
-                        let logoBox = document.createElement('div');
-                        logoBox.className = 'school-logo-placeholder';
-                        logoBox.innerText = '校徽位置';
-                        frontHeader.appendChild(logoBox);
-                    }
-
-                    let titleContainer = document.createElement('div');
-                    titleContainer.className = 'front-title-container';
-                    titleContainer.innerHTML = `
-                        <div class="school-title-cn">${SCHOOL_NAME_CN}</div>
-                        <div class="school-title-en">${SCHOOL_NAME_EN}</div>
-                        <div class="pass-title-line">
-                            <span>外 出 午 膳 證</span>
-                            <span>Lunch Outside Pass</span>
-                        </div>
-                        <div class="school-year-text school-year-display">${getSchoolYear()}</div>
-                    `;
-                    frontHeader.appendChild(titleContainer);
-                    frontSide.appendChild(frontHeader);
-
-                    // 2. 正面 Body (相片 + 學生資料)
-                    let frontBody = document.createElement('div');
-                    frontBody.className = 'front-body';
-
-                    let photoBox = document.createElement('div');
-                    photoBox.className = 'photo-box';
+                    let photoArea = document.createElement('div');
+                    photoArea.className = 'photo-area';
                     let img = document.createElement('img');
                     
+                    // 以 1A01 格式尋找相片
                     if (imageFilesMap[student.id]) {
                         img.src = imageFilesMap[student.id];
                     } else {
                         img.src = noPhotoSvg;
+                        card.classList.add('bg-red-50');
                     }
-                    photoBox.appendChild(img);
-                    frontBody.appendChild(photoBox);
+                    photoArea.appendChild(img);
 
-                    let infoDiv = document.createElement('div');
-                    infoDiv.className = 'student-info';
-                    infoDiv.innerHTML = `
-                        <div class="class-badge">${student.formStr || ('S' + student.class.charAt(0))}</div>
-                        <div>
-                            <div class="info-row">
-                                <span class="info-label">中文姓名：</span>
-                                <span class="info-value">${student.cn || '-'}</span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-label">English Name：</span>
-                                <span class="info-value">${student.en || '-'}</span>
-                            </div>
-                            <div class="info-row" style="margin-top: 1px;">
-                                <span class="info-label">班別及學號 Class & Class No.：</span>
-                                <span class="info-value">${student.class} ${student.classNoFormatted}</span>
-                            </div>
-                        </div>
+                    let textArea = document.createElement('div');
+                    textArea.className = 'text-area';
+                    textArea.innerHTML = `
+                        <div class="st-id">${student.id}</div>
+                        <div class="st-cn">${student.cn}</div>
+                        <div class="st-en" title="${student.en}">${student.en || '&nbsp;'}</div>
                     `;
-                    frontBody.appendChild(infoDiv);
-                    frontSide.appendChild(frontBody);
 
-                    // --- 背面 (右半部) ---
-                    let backSide = document.createElement('div');
-                    backSide.className = 'pass-side pass-back';
-
-                    // 1. 背面 地址與電話
-                    let backHeader = document.createElement('div');
-                    backHeader.className = 'back-header';
-                    backHeader.innerHTML = `
-                        <div class="flex justify-between">
-                            <div>地址：新界將軍澳唐明街 2 號尚德邨</div>
-                            <div>電話：21783223</div>
-                        </div>
-                        <div>Address: 2 Tong Ming Street, Sheung Tak Estate, Tseung Kwan O, N.T.</div>
-                    `;
-                    backSide.appendChild(backHeader);
-
-                    // 2. 聲明條款
-                    let disclaimer = document.createElement('div');
-                    disclaimer.className = 'disclaimer-box';
-                    disclaimer.innerHTML = `
-                        <div style="font-weight: bold; margin-bottom: 1.5mm; text-align: center; color: #1e3a8a; font-size: 8.5pt;">【 外出午膳持證須知 】</div>
-                        <div>此證為香港道教聯合會圓玄學院第三中學所有，只限上述持證人使用；如拾獲此證，請即交回校務處。</div>
-                        <div style="margin-top:2mm; border-t: 1px dashed #cbd5e1; padding-top: 1.5mm;">This card is the property of HKTA The Yuen Yuen Institute No.3 Secondary School and is not transferable. If found, please return to school office.</div>
-                    `;
-                    backSide.appendChild(disclaimer);
-
-                    // 組合正面與背面
-                    passCard.appendChild(frontSide);
-                    passCard.appendChild(backSide);
-                    pageDiv.appendChild(passCard);
+                    card.appendChild(photoArea);
+                    card.appendChild(textArea);
+                    grid.appendChild(card);
                 });
 
+                // 補足 20 格留白
+                const emptySlotsCount = STUDENTS_PER_PAGE - pageStudents.length;
+                for (let j = 0; j < emptySlotsCount; j++) {
+                    let emptyCard = document.createElement('div');
+                    emptyCard.className = 'student-card empty-slot';
+                    grid.appendChild(emptyCard);
+                }
+
+                pageDiv.appendChild(grid);
                 printContainer.appendChild(pageDiv);
             }
         }
 
-        // 5. 缺失相片診斷報告
+        // 4. 缺失相片報告生成器
         function generateMissingReport(studentsToCheck, scopeName) {
             missingReportList.innerHTML = '';
             let missingStudents = [];
